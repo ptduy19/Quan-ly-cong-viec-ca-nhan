@@ -19,7 +19,7 @@ let gitConfig = {
   email: "ptduy19@gmail.com",
   repo: "Quan-ly-cong-viec-ca-nhan",
   branch: "main",
-  path: "Quan ly cong viec/web/tasks.json",
+  path: "web/tasks.json",
   token: ""
 };
 let gitSha = null; // Store SHA of tasks.json for overwrite verification
@@ -85,7 +85,7 @@ function loadGitConfig() {
   document.getElementById("git-email").value = gitConfig.email || "ptduy19@gmail.com";
   document.getElementById("git-repo").value = gitConfig.repo || "Quan-ly-cong-viec-ca-nhan";
   document.getElementById("git-branch").value = gitConfig.branch || "main";
-  document.getElementById("git-path").value = gitConfig.path || "Quan ly cong viec/web/tasks.json";
+  document.getElementById("git-path").value = gitConfig.path || "web/tasks.json";
   document.getElementById("git-token").value = gitConfig.token || "";
 
   if (gitConfig.token) {
@@ -111,8 +111,7 @@ async function connectGitHub() {
       method: "GET",
       headers: {
         "Authorization": `token ${gitConfig.token}`,
-        "Accept": "application/vnd.github.v3+json",
-        "Cache-Control": "no-cache"
+        "Accept": "application/vnd.github.v3+json"
       }
     });
 
