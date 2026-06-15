@@ -1,0 +1,26 @@
+{
+  "short_name": "Duypt2 Tasks",
+  "name": "Duypt2 Task Manager",
+  "icons": [
+    {
+      "src": "assets/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#0b0e14",
+  "theme_color": "#00ccff",
+  "display": "standalone",
+  "orientation": "portrait-primary"
+}
