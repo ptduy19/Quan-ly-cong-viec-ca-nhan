@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+tasks.db-journal
+tasks.db-wal
+tasks.db-shm
+*.spec
+build/
+dist/
+task_app_backup.py

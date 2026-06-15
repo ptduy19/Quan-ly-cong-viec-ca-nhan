@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Duypt2 Task Manager</title>
+  
+  <!-- PWA & Mobile Web Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0e14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Duypt2 Tasks">
+  
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+
+  <!-- FontAwesome for icons & Google Fonts (loaded if needed, but we style in Times New Roman) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div id="app">
+    <!-- Sidebar Navigation -->
+    <aside>
+      <div class="logo-container">
+        <img src="assets/favicon.png" alt="Duypt2 Icon" class="logo-img">
+        <span class="logo-text">Duypt2 Tasks</span>
+      </div>
+      <ul class="nav-links">
+        <li>
+          <a class="nav-item active" data-tab="dashboard">
+            <i class="fa-solid fa-chart-bar" style="color: #00ccff;"></i>
+            <span>Dashboard</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-tab="tasks">
+            <i class="fa-solid fa-list-check" style="color: #39ff14;"></i>
+            <span>Công việc</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-tab="calendar">
+            <i class="fa-solid fa-calendar-days" style="color: #ffff00;"></i>
+            <span>Lịch</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-tab="search">
+            <i class="fa-solid fa-magnifying-glass" style="color: #ff00ff;"></i>
+            <span>Tìm kiếm</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-tab="settings">
+            <i class="fa-solid fa-gear" style="color: #ff0055;"></i>
+            <span>Cài đặt</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main>
+      <header>
+        <h1 id="view-title">Dashboard</h1>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="btn-add-task-header">
+            <i class="fa-solid fa-plus"></i>
+            <span>Thêm công việc</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- View 1: Dashboard -->
+      <section id="dashboard-view" class="view-content active">
+        <div class="dashboard-grid">
+          <div class="stat-card">
+            <div class="stat-icon" style="background-color: rgba(0, 204, 255, 0.1); color: #00ccff;">
+              <i class="fa-solid fa-list-check"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total">0</span>
+              <span class="stat-label">Tổng công việc</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background-color: rgba(0, 240, 255, 0.1); color: #00f0ff;">
+              <i class="fa-solid fa-spinner"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-pending">0</span>
+              <span class="stat-label">Đang làm</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background-color: rgba(57, 255, 20, 0.1); color: #39ff14;">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-completed">0</span>
+              <span class="stat-label">Hoàn thành</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background-color: rgba(255, 0, 85, 0.1); color: #ff0055;">
+              <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-overdue">0</span>
+              <span class="stat-label">Quá hạn</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-container">
+          <div class="summary-card">
+            <h3>Tiến độ hoàn thành</h3>
+            <div class="progress-ring-container">
+              <svg width="150" height="150">
+                <circle cx="75" cy="75" r="60" stroke="#2a364d" stroke-width="12" fill="transparent"/>
+                <circle cx="75" cy="75" r="60" stroke="#00ccff" stroke-width="12" fill="transparent"
+                        stroke-dasharray="377" stroke-dashoffset="377" stroke-linecap="round"
+                        id="progress-circle" style="transition: stroke-dashoffset 0.5s ease; transform: rotate(-90deg); transform-origin: 50% 50%;"/>
+              </svg>
+              <div class="progress-text-center">
+                <span id="progress-percentage">0%</span>
+                <span>Hoàn thành</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="summary-card">
+            <h3>Công việc khẩn cấp / Quá hạn</h3>
+            <div class="tasks-container" id="urgent-tasks-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View 2: Task List -->
+      <section id="tasks-view" class="view-content">
+        <div class="task-list-header">
+          <div class="filter-row">
+            <input type="text" placeholder="Tìm kiếm công việc..." class="text-input" id="filter-search">
+            
+            <select class="select-input" id="filter-status">
+              <option value="all">Tất cả trạng thái</option>
+              <option value="pending">Chưa làm/Đang làm</option>
+              <option value="completed">Hoàn thành</option>
+              <option value="overdue">Quá hạn</option>
+            </select>
+            
+            <select class="select-input" id="filter-priority">
+              <option value="all">Mọi độ ưu tiên</option>
+              <option value="high">Ưu tiên Cao</option>
+              <option value="medium">Ưu tiên Trung bình</option>
+              <option value="low">Ưu tiên Thấp</option>
+            </select>
+
+            <select class="select-input" id="filter-category">
+              <option value="all">Mọi nhóm</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+
+        <div class="tasks-container" id="main-tasks-list">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+
+      <!-- View 3: Calendar -->
+      <section id="calendar-view" class="view-content">
+        <div class="calendar-view-container">
+          <div class="calendar-header">
+            <button class="btn" id="cal-prev-month"><i class="fa-solid fa-chevron-left"></i></button>
+            <h2 id="calendar-month-title">Tháng 06 / 2026</h2>
+            <button class="btn" id="cal-next-month"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+          <div class="calendar-grid-header">
+            <div>CN</div>
+            <div>T2</div>
+            <div>T3</div>
+            <div>T4</div>
+            <div>T5</div>
+            <div>T6</div>
+            <div>T7</div>
+          </div>
+          <div class="calendar-grid" id="calendar-days-grid">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- View 4: Search -->
+      <section id="search-view" class="view-content">
+        <div style="margin-bottom: 25px;">
+          <input type="text" placeholder="Nhập từ khóa tìm kiếm (tên công việc, mô tả, người phụ trách...)" 
+                 class="text-input" style="width: 100%; padding: 15px; font-size: 14px;" id="search-input-field">
+        </div>
+        <div class="tasks-container" id="search-results-list">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+
+      <!-- View 5: Settings -->
+      <section id="settings-view" class="view-content">
+        <div class="settings-section">
+          <h3>Đồng bộ hóa GitHub (GitHub Sync)</h3>
+          <p class="settings-desc" style="margin-bottom: 15px;">Đồng bộ hóa dữ liệu trực tiếp lên kho lưu trữ GitHub của bạn. Dữ liệu sẽ được lưu tại tệp tin <code>tasks.json</code>.</p>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>GitHub Username (Tài khoản)</label>
+              <input type="text" class="form-control" id="git-username" value="ptduy19">
+            </div>
+            <div class="form-group">
+              <label>GitHub Email (Commit Email)</label>
+              <input type="text" class="form-control" id="git-email" value="ptduy19@gmail.com">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Repository (Tên kho chứa)</label>
+              <input type="text" class="form-control" id="git-repo" value="Quan-ly-cong-viec-ca-nhan">
+            </div>
+            <div class="form-group">
+              <label>Branch (Nhánh)</label>
+              <input type="text" class="form-control" id="git-branch" value="main">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Đường dẫn tệp (File Path)</label>
+            <input type="text" class="form-control" id="git-path" value="Quan ly cong viec/web/tasks.json">
+          </div>
+
+          <div class="form-group">
+            <label>Personal Access Token (Token cá nhân)*</label>
+            <input type="password" class="form-control" id="git-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+          </div>
+          
+          <div style="margin-top: 20px;">
+            <button class="btn btn-primary" id="btn-save-git-config">Lưu cấu hình & Kết nối</button>
+            <span id="git-status" style="margin-left: 15px; font-size: 12px; font-weight: bold;">Chưa kết nối (Đang dùng dữ liệu Local)</span>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Nhóm công việc (Categories)</h3>
+          <div id="settings-categories-list" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+            <!-- Dynamically populated -->
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <input type="text" placeholder="Tên nhóm mới" class="text-input" id="new-cat-name">
+            <button class="btn" id="btn-add-category">Thêm nhóm</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Task Add/Edit Modal Dialog -->
+  <div class="modal" id="task-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modal-task-title">Thêm công việc mới</h2>
+        <button class="icon-btn" id="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      
+      <form id="task-form">
+        <input type="hidden" id="task-id">
+        
+        <div class="form-group">
+          <label>Tên công việc *</label>
+          <input type="text" class="form-control" id="task-title-input" required placeholder="Nhập tên công việc">
+        </div>
+        
+        <div class="form-group">
+          <label>Mô tả</label>
+          <textarea class="form-control" id="task-desc-input" placeholder="Mô tả chi tiết công việc"></textarea>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ngày bắt đầu</label>
+            <input type="date" class="form-control" id="task-start-date">
+          </div>
+          <div class="form-group">
+            <label>Deadline (ngày) *</label>
+            <input type="date" class="form-control" id="task-deadline-date" required>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Deadline (giờ)</label>
+            <input type="time" class="form-control" id="task-deadline-time" value="23:59">
+          </div>
+          <div class="form-group">
+            <label>Mức độ ưu tiên</label>
+            <select class="form-control" id="task-priority">
+              <option value="high">Cao</option>
+              <option value="medium" selected>Trung bình</option>
+              <option value="low">Thấp</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nhóm công việc</label>
+            <select class="form-control" id="task-category">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Người phụ trách</label>
+            <input type="text" class="form-control" id="task-assignee" placeholder="Tên người phụ trách">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 15px;" id="progress-group">
+          <label>Tiến độ hoàn thành: <span id="progress-val-text">0%</span></label>
+          <input type="range" class="form-control" id="task-progress" min="0" max="100" value="0" style="padding: 0; height: 8px;">
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn" id="btn-cancel-modal">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu công việc</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Core Application Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
