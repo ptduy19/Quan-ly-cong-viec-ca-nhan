@@ -112,6 +112,15 @@ class DatabaseManager:
             CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON tasks(deadline_date);
             CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
             CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category_id);
+
+            CREATE TABLE IF NOT EXISTS notifications (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                title       TEXT NOT NULL,
+                message     TEXT NOT NULL,
+                urgency     TEXT DEFAULT 'info',
+                is_read     INTEGER DEFAULT 0,
+                created_at  TEXT DEFAULT (datetime('now','localtime'))
+            );
         """)
 
         # Seed default categories if empty

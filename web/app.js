@@ -25,13 +25,37 @@ let gitConfig = {
 let gitSha = null; // Store SHA of tasks.json for overwrite verification
 let isGitConnected = false;
 
+// --- Notifications State ---
+let notifications = [];
+
+// --- Date Utils ---
+function isTaskOverdue(task) {
+  if (task.progress >= 100) return false;
+  if (!task.deadline_date) return false;
+  
+  const now = new Date();
+  const deadlineStr = `${task.deadline_date}T${task.deadline_time || "23:59"}:00`;
+  const deadline = new Date(deadlineStr);
+  return deadline < now;
+}
+
 // --- Initialize App ---
 document.addEventListener("DOMContentLoaded", () => {
   initPWA();
   loadLocalCategories();
+  loadLocalNotifications();
   loadGitConfig();
   setupEventListeners();
   renderApp();
+  
+  // Start deadline checker
+  checkDeadlines();
+  setInterval(checkDeadlines, 30000); // every 30 seconds
+  
+  // Request Notification Permission
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
 });
 
 // --- PWA Setup ---
@@ -67,6 +91,18 @@ function saveLocalTasks() {
   renderTasks();
   renderCalendar();
   renderDashboardUrgent();
+}
+
+function loadLocalNotifications() {
+  const localNotifs = localStorage.getItem("duypt2_notifications");
+  notifications = localNotifs ? JSON.parse(localNotifs) : [];
+  updateNotificationBadge();
+}
+
+function saveLocalNotifications() {
+  localStorage.setItem("duypt2_notifications", JSON.stringify(notifications));
+  updateNotificationBadge();
+  renderNotifications();
 }
 
 // --- GitHub Sync Operations ---
@@ -282,6 +318,15 @@ function setupEventListeners() {
   progressSlider.addEventListener("input", (e) => {
     progressTextVal.textContent = `${e.target.value}%`;
   });
+  
+  // Notifications mark all read
+  const btnMarkAllRead = document.getElementById("btn-mark-all-read");
+  if (btnMarkAllRead) {
+    btnMarkAllRead.addEventListener("click", () => {
+      notifications.forEach(n => n.is_read = true);
+      saveLocalNotifications();
+    });
+  }
 }
 
 // --- Tab Navigation ---
@@ -320,6 +365,7 @@ function switchTab(tabId) {
   if (tabId === "tasks") renderTasks();
   if (tabId === "calendar") renderCalendar();
   if (tabId === "settings") renderSettingsCategories();
+  if (tabId === "notifications") renderNotifications();
 }
 
 // --- Render Logic ---
@@ -369,7 +415,7 @@ function updateCalculations() {
     } else {
       pending++;
       // Check if overdue
-      if (t.deadline_date && t.deadline_date < todayStr) {
+      if (isTaskOverdue(t)) {
         overdue++;
       }
     }
@@ -416,7 +462,7 @@ function renderTasks() {
     let matchStatus = true;
     if (statusVal === "pending") matchStatus = task.progress < 100;
     else if (statusVal === "completed") matchStatus = task.progress >= 100;
-    else if (statusVal === "overdue") matchStatus = task.progress < 100 && task.deadline_date < todayStr;
+    else if (statusVal === "overdue") matchStatus = isTaskOverdue(task);
 
     // Priority Filter
     const matchPriority = priorityVal === "all" || task.priority === priorityVal;
@@ -507,7 +553,7 @@ function renderDashboardUrgent() {
 
   // Filters overdue or high priority pending tasks
   const urgentTasks = tasks
-    .filter((t) => t.progress < 100 && (t.priority === "high" || t.deadline_date < todayStr))
+    .filter((t) => t.progress < 100 && (t.priority === "high" || isTaskOverdue(t)))
     .slice(0, 3); // show top 3
 
   if (urgentTasks.length === 0) {
@@ -524,7 +570,7 @@ function renderDashboardUrgent() {
     card.className = `task-card priority-${task.priority}`;
     card.style.padding = "10px 15px";
 
-    const isOverdue = task.deadline_date < todayStr;
+    const isOverdue = isTaskOverdue(task);
     const dateColor = isOverdue ? "var(--danger)" : "var(--text-secondary)";
 
     card.innerHTML = `
@@ -870,4 +916,130 @@ function escapeHtml(text) {
   const div = document.createElement("div");
   div.innerText = text;
   return div.innerHTML;
+}
+
+// --- Notifications Logic ---
+function checkDeadlines() {
+  const now = new Date();
+  let changed = false;
+
+  tasks.forEach((task) => {
+    if (task.progress >= 100) return;
+    if (!task.deadline_date) return;
+
+    const deadlineStr = `${task.deadline_date}T${task.deadline_time || "23:59"}:00`;
+    const deadline = new Date(deadlineStr);
+    const timeDiffMs = deadline - now;
+    const totalHours = timeDiffMs / (1000 * 60 * 60);
+
+    // Mốc 1: Quá hạn
+    if (totalHours <= 0 && !task.notified_overdue) {
+      addNotification("🔴 Quá hạn!", `Công việc "${task.title}" đã quá deadline!`, "danger");
+      task.notified_overdue = true;
+      changed = true;
+    }
+    // Mốc 2: Sắp đến hạn (<= 2 giờ)
+    else if (totalHours > 0 && totalHours <= 2 && !task.notified_2h) {
+      addNotification("⚠️ Sắp đến hạn", `Công việc "${task.title}" sắp đến hạn trong vòng 2 giờ!`, "warning");
+      task.notified_2h = true;
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    saveTasksToGitHub(); // Update task flags
+  }
+}
+
+function addNotification(title, message, urgency) {
+  const notif = {
+    id: `notif-${Date.now()}`,
+    title: title,
+    message: message,
+    urgency: urgency,
+    is_read: false,
+    created_at: new Date().toISOString()
+  };
+  
+  notifications.unshift(notif); // Add to beginning
+  saveLocalNotifications();
+  showBrowserNotification(title, message);
+}
+
+function showBrowserNotification(title, message) {
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, {
+      body: message,
+      icon: "assets/icon-192.png"
+    });
+  }
+}
+
+function updateNotificationBadge() {
+  const badge = document.getElementById("nav-notification-badge");
+  if (!badge) return;
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+  if (unreadCount > 0) {
+    badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+    badge.style.display = "flex";
+    badge.style.justifyContent = "center";
+    badge.style.alignItems = "center";
+  } else {
+    badge.style.display = "none";
+  }
+}
+
+function renderNotifications() {
+  const container = document.getElementById("notifications-list");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (notifications.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-muted); padding: 40px;">
+        <i class="fa-solid fa-bell-slash" style="font-size: 32px; margin-bottom: 15px; display: block; color: var(--border);"></i>
+        Không có thông báo nào.
+      </div>
+    `;
+    return;
+  }
+
+  notifications.forEach((notif) => {
+    const card = document.createElement("div");
+    card.className = `notification-card ${notif.urgency} ${notif.is_read ? "" : "unread"}`;
+    
+    let iconHTML = \`<i class="fa-solid fa-circle-info" style="color: var(--info); font-size: 20px;"></i>\`;
+    if (notif.urgency === "warning") iconHTML = \`<i class="fa-solid fa-triangle-exclamation" style="color: var(--warning); font-size: 20px;"></i>\`;
+    if (notif.urgency === "danger") iconHTML = \`<i class="fa-solid fa-circle-exclamation" style="color: var(--danger); font-size: 20px;"></i>\`;
+
+    const timeDate = new Date(notif.created_at);
+    const timeStr = \`\${String(timeDate.getHours()).padStart(2, '0')}:\${String(timeDate.getMinutes()).padStart(2, '0')} \${String(timeDate.getDate()).padStart(2, '0')}/\${String(timeDate.getMonth()+1).padStart(2, '0')}\`;
+
+    card.innerHTML = \`
+      <div style="display: flex; gap: 15px; align-items: center; flex: 1;">
+        <div style="width: 30px; display: flex; justify-content: center;">
+          \${iconHTML}
+        </div>
+        <div class="notif-content" style="flex: 1;">
+          <h4>\${escapeHtml(notif.title)}</h4>
+          <p>\${escapeHtml(notif.message)}</p>
+          <span class="notif-time">\${timeStr}</span>
+        </div>
+      </div>
+      <div class="notif-actions">
+        \${!notif.is_read ? \`<button class="btn-mark-read" data-id="\${notif.id}"><i class="fa-solid fa-check"></i> Đã đọc</button>\` : \`<i class="fa-solid fa-check-double" style="color: var(--success); font-size: 14px;"></i>\`}
+      </div>
+    \`;
+
+    if (!notif.is_read) {
+      card.querySelector(".btn-mark-read").addEventListener("click", () => {
+        notif.is_read = true;
+        saveLocalNotifications();
+      });
+    }
+
+    container.appendChild(card);
+  });
 }

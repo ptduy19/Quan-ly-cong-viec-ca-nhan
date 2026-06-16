@@ -54,6 +54,13 @@
           </a>
         </li>
         <li>
+          <a class="nav-item" data-tab="notifications" id="nav-notifications">
+            <i class="fa-solid fa-bell" style="color: #ff9900;"></i>
+            <span>Thông báo</span>
+            <span class="badge notification-badge" id="nav-notification-badge" style="display: none;">0</span>
+          </a>
+        </li>
+        <li>
           <a class="nav-item" data-tab="settings">
             <i class="fa-solid fa-gear" style="color: #ff0055;"></i>
             <span>Cài đặt</span>
@@ -260,6 +267,17 @@
             <input type="text" placeholder="Tên nhóm mới" class="text-input" id="new-cat-name">
             <button class="btn" id="btn-add-category">Thêm nhóm</button>
           </div>
+        </div>
+      </section>
+
+      <!-- View 6: Notifications -->
+      <section id="notifications-view" class="view-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3>Thông báo của bạn</h3>
+          <button class="btn btn-primary" id="btn-mark-all-read" style="font-size: 12px; padding: 6px 12px;">Đánh dấu đã đọc tất cả</button>
+        </div>
+        <div class="tasks-container" id="notifications-list">
+          <!-- Dynamically populated -->
         </div>
       </section>
     </main>

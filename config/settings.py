@@ -141,6 +141,7 @@ NAV_ITEMS = [
     {"id": "tasks",      "label": "Công việc",    "icon": "\uf0ae", "color": "#39ff14"},  # tasks
     {"id": "calendar",   "label": "Lịch",         "icon": "\uf133", "color": "#ffff00"},  # calendar-days
     {"id": "search",     "label": "Tìm kiếm",     "icon": "\uf002", "color": "#ff00ff"},  # magnifying-glass
+    {"id": "notifications","label":"Thông báo",   "icon": "\uf0f3", "color": "#00f0ff"},  # bell
     {"id": "settings",   "label": "Cài đặt",      "icon": "\uf013", "color": "#ff0055"},  # gear
 ]
 

@@ -830,3 +830,82 @@ textarea.form-control {
     margin-bottom: calc(60px + env(safe-area-inset-bottom));
   }
 }
+
+/* Notifications Styles */
+.notification-badge {
+  background-color: var(--danger);
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: bold;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+}
+
+.nav-item {
+  position: relative; /* Ensure badge positions correctly */
+}
+
+.notification-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--info);
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  transition: all 0.2s ease;
+}
+
+.notification-card.unread {
+  background-color: rgba(0, 204, 255, 0.05);
+  border-left-color: var(--accent);
+}
+
+.notification-card.warning {
+  border-left-color: var(--warning);
+}
+
+.notification-card.danger {
+  border-left-color: var(--danger);
+}
+
+.notif-content h4 {
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.notif-content p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.notif-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  display: block;
+}
+
+.notif-actions button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.notif-actions button:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}

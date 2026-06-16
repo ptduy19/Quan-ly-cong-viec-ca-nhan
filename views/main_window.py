@@ -27,6 +27,7 @@ from views.task_form import TaskFormDialog
 from views.calendar_view import CalendarView
 from views.search_view import SearchView
 from views.settings_view import SettingsView
+from views.notification_view import NotificationView
 
 
 class MainWindow(ctk.CTk):
@@ -216,6 +217,10 @@ class MainWindow(ctk.CTk):
             return SearchView(
                 self.content, theme=t,
                 on_task_action=self._handle_task_action,
+            )
+        elif view_id == "notifications":
+            return NotificationView(
+                self.content, theme=t,
             )
         elif view_id == "settings":
             return SettingsView(
