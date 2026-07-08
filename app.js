@@ -34,7 +34,7 @@ function isTaskOverdue(task) {
   if (!task.deadline_date) return false;
   
   const now = new Date();
-  const deadlineStr = `${task.deadline_date}T${task.deadline_time || "23:59"}:00`;
+  const deadlineStr = `${task.deadline_date}T${task.deadline_time || "16:00"}:00`;
   const deadline = new Date(deadlineStr);
   return deadline < now;
 }
@@ -320,12 +320,7 @@ function setupEventListeners() {
   document.getElementById("cal-prev-month").addEventListener("click", () => changeMonth(-1));
   document.getElementById("cal-next-month").addEventListener("click", () => changeMonth(1));
 
-  // Progress Bar Slider label
-  const progressSlider = document.getElementById("task-progress");
-  const progressTextVal = document.getElementById("progress-val-text");
-  progressSlider.addEventListener("input", (e) => {
-    progressTextVal.textContent = `${e.target.value}%`;
-  });
+
   
   // Notifications mark all read
   const btnMarkAllRead = document.getElementById("btn-mark-all-read");
@@ -818,10 +813,9 @@ function openTaskModal(task = null, prefillDate = null) {
   const todayStr = new Date().toISOString().split("T")[0];
   document.getElementById("task-start-date").value = todayStr;
   document.getElementById("task-deadline-date").value = prefillDate || todayStr;
-  document.getElementById("task-deadline-time").value = "23:59";
+  document.getElementById("task-deadline-time").value = "16:00";
   document.getElementById("task-progress").value = "0";
-  document.getElementById("progress-val-text").textContent = "0%";
-  document.getElementById("progress-group").style.display = "none"; // Hide progress on new tasks
+  document.getElementById("task-recurrence").value = "none";
 
   if (task) {
     // Edit Mode
@@ -832,13 +826,12 @@ function openTaskModal(task = null, prefillDate = null) {
     document.getElementById("task-desc-input").value = task.description || "";
     document.getElementById("task-start-date").value = task.start_date || todayStr;
     document.getElementById("task-deadline-date").value = task.deadline_date;
-    document.getElementById("task-deadline-time").value = task.deadline_time || "23:59";
+    document.getElementById("task-deadline-time").value = task.deadline_time || "16:00";
     document.getElementById("task-priority").value = task.priority || "medium";
     document.getElementById("task-category").value = task.category_id || categories[0].id;
     document.getElementById("task-assignee").value = task.assignee || "";
     document.getElementById("task-progress").value = task.progress || 0;
-    document.getElementById("progress-val-text").textContent = `${task.progress || 0}%`;
-    document.getElementById("progress-group").style.display = "block"; // Show progress on edit
+    document.getElementById("task-recurrence").value = task.recurrence || "none";
   } else {
     // Add Mode
     title.textContent = "Thêm công việc mới";
@@ -860,13 +853,16 @@ function handleFormSubmit(e) {
   const description = document.getElementById("task-desc-input").value.trim();
   const start_date = document.getElementById("task-start-date").value;
   const deadline_date = document.getElementById("task-deadline-date").value;
-  const deadline_time = document.getElementById("task-deadline-time").value || "23:59";
+  const deadline_time = document.getElementById("task-deadline-time").value || "16:00";
   const priority = document.getElementById("task-priority").value;
   const category_id = document.getElementById("task-category").value;
   const assignee = document.getElementById("task-assignee").value.trim();
+  const recurrence = document.getElementById("task-recurrence").value;
   
   // Progress computation
   let progress = parseInt(document.getElementById("task-progress").value);
+  if (isNaN(progress)) progress = 0;
+  progress = Math.max(0, Math.min(100, progress));
   if (!currentEditingTaskId) {
     progress = 0; // default for new task
   }
@@ -881,6 +877,7 @@ function handleFormSubmit(e) {
     category_id,
     assignee,
     progress,
+    recurrence,
     updated_at: new Date().toISOString()
   };
 
@@ -888,7 +885,11 @@ function handleFormSubmit(e) {
     // Edit existing task
     const idx = tasks.findIndex((t) => t.id === currentEditingTaskId);
     if (idx !== -1) {
-      tasks[idx] = { ...tasks[idx], ...taskData };
+      const oldTask = tasks[idx];
+      tasks[idx] = { ...oldTask, ...taskData };
+      if (taskData.progress >= 100 && oldTask.progress < 100 && taskData.recurrence !== "none") {
+        spawnNextRecurrence(tasks[idx]);
+      }
       saveTasksToGitHub();
     }
     closeModal();
@@ -909,9 +910,43 @@ function toggleTaskComplete(id, completed) {
   const progressVal = completed ? 100 : 0;
   const idx = tasks.findIndex((t) => t.id === id);
   if (idx !== -1) {
+    const oldProgress = tasks[idx].progress;
     tasks[idx].progress = progressVal;
     tasks[idx].updated_at = new Date().toISOString();
+    if (progressVal === 100 && oldProgress < 100 && tasks[idx].recurrence !== "none") {
+      spawnNextRecurrence(tasks[idx]);
+    }
     saveTasksToGitHub();
+  }
+}
+
+function spawnNextRecurrence(task) {
+  try {
+    const deadline = new Date(task.deadline_date);
+    let nextDeadline = new Date(deadline);
+    if (task.recurrence === "daily") {
+      nextDeadline.setDate(nextDeadline.getDate() + 1);
+    } else if (task.recurrence === "weekly") {
+      nextDeadline.setDate(nextDeadline.getDate() + 7);
+    } else if (task.recurrence === "monthly") {
+      nextDeadline.setMonth(nextDeadline.getMonth() + 1);
+    } else {
+      return;
+    }
+    
+    const newTask = {
+      ...task,
+      id: `task-${Date.now()}`,
+      start_date: new Date().toISOString().split("T")[0],
+      deadline_date: nextDeadline.toISOString().split("T")[0],
+      progress: 0,
+      status: "pending",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    tasks.push(newTask);
+  } catch(e) {
+    console.error("Recurrence error", e);
   }
 }
 
@@ -952,7 +987,7 @@ function checkDeadlines() {
     if (task.progress >= 100) return;
     if (!task.deadline_date) return;
 
-    const deadlineStr = `${task.deadline_date}T${task.deadline_time || "23:59"}:00`;
+    const deadlineStr = `${task.deadline_date}T${task.deadline_time || "16:00"}:00`;
     const deadline = new Date(deadlineStr);
     const timeDiffMs = deadline - now;
     const totalHours = timeDiffMs / (1000 * 60 * 60);
