@@ -19,9 +19,11 @@ from utils.icon_manager import IconManager
 class DashboardView(ctk.CTkFrame):
     """Dashboard with stat cards, chart, and task lists."""
 
-    def __init__(self, master, theme: dict = None, on_task_action=None, **kwargs):
+    def __init__(self, master, theme: dict = None, on_task_action=None,
+                 on_navigate_tasks=None, **kwargs):
         self.theme = theme or DARK
         self.on_task_action = on_task_action
+        self.on_navigate_tasks = on_navigate_tasks
         super().__init__(master, fg_color="transparent", **kwargs)
 
         self.task_model = TaskModel()
@@ -121,15 +123,23 @@ class DashboardView(ctk.CTkFrame):
         today_section = ctk.CTkFrame(self.scroll, fg_color="transparent")
         today_section.pack(fill="x", padx=20, pady=(0, 10))
 
-        ctk.CTkLabel(
-            today_section,
+        today_header = ctk.CTkFrame(today_section, fg_color="transparent")
+        today_header.pack(fill="x", pady=(0, 8))
+
+        today_title = ctk.CTkLabel(
+            today_header,
             text=" Việc hôm nay",
             image=IconManager.get_icon("\uf06d", color=t["accent"], size=18),
             compound="left",
             font=(FONT_FAMILY, FONT_SIZE_LG, "bold"),
             text_color=t["accent"],
             anchor="w",
-        ).pack(fill="x", pady=(0, 8))
+            cursor="hand2",
+        )
+        today_title.pack(side="left")
+        today_title.bind("<Button-1>", lambda e: self._open_task_list("today"))
+
+        self._add_view_all_link(today_header, "today")
 
         self.today_tasks_frame = ctk.CTkFrame(today_section, fg_color="transparent")
         self.today_tasks_frame.pack(fill="x")
@@ -140,20 +150,82 @@ class DashboardView(ctk.CTkFrame):
         upcoming_section = ctk.CTkFrame(self.scroll, fg_color="transparent")
         upcoming_section.pack(fill="x", padx=20, pady=(0, 20))
 
-        ctk.CTkLabel(
-            upcoming_section,
+        upcoming_header = ctk.CTkFrame(upcoming_section, fg_color="transparent")
+        upcoming_header.pack(fill="x", pady=(0, 8))
+
+        upcoming_title = ctk.CTkLabel(
+            upcoming_header,
             text=" Sắp đến hạn",
             image=IconManager.get_icon("\uf017", color=t["warning"], size=18),
             compound="left",
             font=(FONT_FAMILY, FONT_SIZE_LG, "bold"),
             text_color=t["warning"],
             anchor="w",
-        ).pack(fill="x", pady=(0, 8))
+            cursor="hand2",
+        )
+        upcoming_title.pack(side="left")
+        upcoming_title.bind("<Button-1>", lambda e: self._open_task_list("due_soon"))
+
+        self._add_view_all_link(upcoming_header, "due_soon")
 
         self.upcoming_frame = ctk.CTkFrame(upcoming_section, fg_color="transparent")
         self.upcoming_frame.pack(fill="x")
 
         self._load_upcoming_tasks()
+
+        # ── Overdue Tasks ────────────────────────────────────────────────
+        overdue_section = ctk.CTkFrame(self.scroll, fg_color="transparent")
+        overdue_section.pack(fill="x", padx=20, pady=(0, 10))
+
+        overdue_header = ctk.CTkFrame(overdue_section, fg_color="transparent")
+        overdue_header.pack(fill="x", pady=(0, 8))
+
+        overdue_title = ctk.CTkLabel(
+            overdue_header,
+            text=" Quá hạn",
+            image=IconManager.get_icon("\uf071", color=t["danger"], size=18),
+            compound="left",
+            font=(FONT_FAMILY, FONT_SIZE_LG, "bold"),
+            text_color=t["danger"],
+            anchor="w",
+            cursor="hand2",
+        )
+        overdue_title.pack(side="left")
+        overdue_title.bind("<Button-1>", lambda e: self._open_task_list("overdue"))
+
+        self._add_view_all_link(overdue_header, "overdue")
+
+        self.overdue_frame = ctk.CTkFrame(overdue_section, fg_color="transparent")
+        self.overdue_frame.pack(fill="x")
+
+        self._load_overdue_tasks()
+
+        # ── Completed Tasks ──────────────────────────────────────────────
+        completed_section = ctk.CTkFrame(self.scroll, fg_color="transparent")
+        completed_section.pack(fill="x", padx=20, pady=(0, 20))
+
+        completed_header = ctk.CTkFrame(completed_section, fg_color="transparent")
+        completed_header.pack(fill="x", pady=(0, 8))
+
+        completed_title = ctk.CTkLabel(
+            completed_header,
+            text=" Đã hoàn thành gần đây",
+            image=IconManager.get_icon("\uf058", color=t["success"], size=18),
+            compound="left",
+            font=(FONT_FAMILY, FONT_SIZE_LG, "bold"),
+            text_color=t["success"],
+            anchor="w",
+            cursor="hand2",
+        )
+        completed_title.pack(side="left")
+        completed_title.bind("<Button-1>", lambda e: self._open_task_list("completed"))
+
+        self._add_view_all_link(completed_header, "completed")
+
+        self.completed_frame = ctk.CTkFrame(completed_section, fg_color="transparent")
+        self.completed_frame.pack(fill="x")
+
+        self._load_completed_tasks()
 
     def _create_stat_cards(self):
         t = self.theme
@@ -174,9 +246,31 @@ class DashboardView(ctk.CTkFrame):
                 label=label,
                 accent_color=color,
                 theme=self.theme,
+                on_click=lambda f=key: self._open_task_list(f),
             )
             card.grid(row=0, column=idx, padx=5, pady=5, sticky="nsew")
             self.stat_cards[key] = card
+
+    def _add_view_all_link(self, parent, filter_type: str):
+        """Small link button to open the filtered task list."""
+        t = self.theme
+        ctk.CTkButton(
+            parent,
+            text="Xem danh sách →",
+            font=(FONT_FAMILY, FONT_SIZE_SM),
+            height=28,
+            width=130,
+            corner_radius=6,
+            fg_color="transparent",
+            hover_color=t["bg_input"],
+            text_color=t["accent"],
+            anchor="e",
+            command=lambda: self._open_task_list(filter_type),
+        ).pack(side="right")
+
+    def _open_task_list(self, filter_type: str):
+        if self.on_navigate_tasks:
+            self.on_navigate_tasks(filter_type)
 
     def _draw_bar_chart(self):
         """Draw a beautiful gradient bar chart using Matplotlib."""
@@ -256,6 +350,7 @@ class DashboardView(ctk.CTkFrame):
         ax.set_facecolor(t["bg_card"])
         
         # Pie chart with shadow
+        status_keys = ["pending", "in_progress", "completed", "overdue"]
         wedges, texts, autotexts = ax.pie(
             sizes,
             labels=labels,
@@ -266,7 +361,21 @@ class DashboardView(ctk.CTkFrame):
             textprops={'color': t["text_primary"], 'family': FONT_FAMILY},
             wedgeprops=dict(width=0.4, edgecolor=t["bg_card"]) # Donut shape
         )
-        
+
+        # Clickable segments — open filtered task list
+        filtered_keys = [k for s, k in zip(
+            [stats["pending"], stats["in_progress"], stats["completed"], stats["overdue"]],
+            status_keys,
+        ) if s > 0]
+        for wedge, status_key in zip(wedges, filtered_keys):
+            wedge.set_picker(5)
+
+        def on_pick(event):
+            if event.artist in wedges:
+                idx = wedges.index(event.artist)
+                if idx < len(filtered_keys):
+                    self._open_task_list(filtered_keys[idx])
+
         # Make autotexts darker or inverse
         for autotext in autotexts:
             autotext.set_color(t.get("text_inverse", "#000000"))
@@ -276,6 +385,7 @@ class DashboardView(ctk.CTkFrame):
         fig.tight_layout()
 
         canvas = FigureCanvasTkAgg(fig, master=self.donut_container)
+        canvas.mpl_connect("pick_event", on_pick)
         canvas.draw()
         widget = canvas.get_tk_widget()
         widget.configure(bg=t["bg_card"], highlightthickness=0)
@@ -290,6 +400,14 @@ class DashboardView(ctk.CTkFrame):
     def _load_upcoming_tasks(self):
         tasks = self.task_model.get_tasks_due_soon(days=7)
         self._render_task_list(self.upcoming_frame, tasks, "Không có việc sắp đến hạn")
+
+    def _load_overdue_tasks(self):
+        tasks = self.task_model.get_overdue_tasks()
+        self._render_task_list(self.overdue_frame, tasks, "Không có việc quá hạn ✅")
+
+    def _load_completed_tasks(self):
+        tasks = self.task_model.get_completed_tasks(limit=5)
+        self._render_task_list(self.completed_frame, tasks, "Chưa có việc hoàn thành")
 
     def _render_task_list(self, container, tasks, empty_msg):
         for child in container.winfo_children():
@@ -331,6 +449,8 @@ class DashboardView(ctk.CTkFrame):
         # Reload task lists
         self._load_today_tasks()
         self._load_upcoming_tasks()
+        self._load_overdue_tasks()
+        self._load_completed_tasks()
 
         # Redraw charts
         for child in self.chart_container.winfo_children():

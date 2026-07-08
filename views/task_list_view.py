@@ -32,6 +32,7 @@ class TaskListView(ctk.CTkFrame):
         self._filter_priority = "all"
         self._filter_category = "all"
         self._sort_by = "deadline_date ASC"
+        self._dashboard_filter = None  # "today" | "due_soon" when opened from dashboard
 
         self._build_ui()
         self.load_tasks()
@@ -130,6 +131,33 @@ class TaskListView(ctk.CTkFrame):
         self.combo_sort.set("Deadline ↑")
         self.combo_sort.pack(side="left")
 
+        # ── Active filter banner (shown when navigated from dashboard) ───────
+        self.filter_banner = ctk.CTkFrame(
+            self, fg_color=t["bg_card"], corner_radius=8,
+            border_width=1, border_color=t["accent"],
+        )
+        # Not packed yet — shown/hidden dynamically
+
+        self._filter_banner_label = ctk.CTkLabel(
+            self.filter_banner,
+            text="",
+            font=(FONT_FAMILY, FONT_SIZE_XS),
+            text_color=t["accent"],
+            anchor="w",
+        )
+        self._filter_banner_label.pack(side="left", padx=(12, 4), pady=6)
+
+        ctk.CTkButton(
+            self.filter_banner,
+            text="× Xóa bộ lọc",
+            font=(FONT_FAMILY, FONT_SIZE_XS),
+            height=24, width=90, corner_radius=6,
+            fg_color="transparent",
+            hover_color=t["border"],
+            text_color=t["text_muted"],
+            command=self._clear_dashboard_filter,
+        ).pack(side="right", padx=8, pady=6)
+
         # ── Task count label ────────────────────────────────────────────
         self.count_label = ctk.CTkLabel(
             self,
@@ -149,6 +177,8 @@ class TaskListView(ctk.CTkFrame):
 
     def _on_filter_change(self, value=None):
         """Handle filter combo change."""
+        self._dashboard_filter = None
+        self._hide_filter_banner()
         # Map Vietnamese labels back to keys
         status_map = {
             "Tất cả": "all", "Chưa làm": "pending",
@@ -174,16 +204,84 @@ class TaskListView(ctk.CTkFrame):
         self._sort_by = sort_map.get(self.combo_sort.get(), "deadline_date ASC")
         self.load_tasks()
 
+    def apply_dashboard_filter(self, filter_type: str):
+        """Apply a preset filter when navigating from the dashboard."""
+        filter_labels = {
+            "today":       "📅 Đang xem: Việc hôm nay",
+            "due_soon":    "⏰ Đang xem: Sắp đến hạn",
+            "overdue":     "🔴 Đang xem: Công việc quá hạn",
+            "completed":   "✅ Đang xem: Hoàn thành",
+            "pending":     "🗒️ Đang xem: Chưa làm",
+            "in_progress": "⚡ Đang xem: Đang thực hiện",
+            "all":         "📋 Đang xem: Tất cả công việc",
+        }
+        status_labels = {
+            "all": "Tất cả",
+            "pending": "Chưa làm",
+            "in_progress": "Đang thực hiện",
+            "completed": "Hoàn thành",
+            "overdue": "Quá hạn",
+        }
+
+        if filter_type in ("today", "due_soon"):
+            self._dashboard_filter = filter_type
+            self.combo_status.set("Tất cả")
+            self.combo_priority.set("Tất cả")
+            self._filter_status = "all"
+            self._filter_priority = "all"
+        elif filter_type in status_labels:
+            self._dashboard_filter = None
+            self.combo_status.set(status_labels[filter_type])
+            self.combo_priority.set("Tất cả")
+            self._filter_status = filter_type if filter_type != "all" else "all"
+            self._filter_priority = "all"
+        else:
+            self._dashboard_filter = None
+            self.combo_status.set("Tất cả")
+            self.combo_priority.set("Tất cả")
+            self._filter_status = "all"
+            self._filter_priority = "all"
+
+        # Show banner
+        banner_text = filter_labels.get(filter_type, f"Đang xem: {filter_type}")
+        self._show_filter_banner(banner_text)
+
+        self.load_tasks()
+
+    def _clear_dashboard_filter(self):
+        """Clear dashboard filter and show all tasks."""
+        self._dashboard_filter = None
+        self._filter_status = "all"
+        self._filter_priority = "all"
+        self.combo_status.set("Tất cả")
+        self.combo_priority.set("Tất cả")
+        self._hide_filter_banner()
+        self.load_tasks()
+
+    def _show_filter_banner(self, text: str):
+        """Show the active filter banner with the given text."""
+        self._filter_banner_label.configure(text=text)
+        self.filter_banner.pack(fill="x", padx=20, pady=(0, 4), before=self.count_label)
+
+    def _hide_filter_banner(self):
+        """Hide the active filter banner."""
+        self.filter_banner.pack_forget()
+
     def load_tasks(self):
         """Load and display tasks based on current filters."""
-        status = self._filter_status if self._filter_status != "all" else None
-        priority = self._filter_priority if self._filter_priority != "all" else None
+        if self._dashboard_filter == "today":
+            tasks = self.task_model.get_tasks_today()
+        elif self._dashboard_filter == "due_soon":
+            tasks = self.task_model.get_tasks_due_soon(days=7)
+        else:
+            status = self._filter_status if self._filter_status != "all" else None
+            priority = self._filter_priority if self._filter_priority != "all" else None
 
-        tasks = self.task_model.get_all_tasks(
-            status=status,
-            priority=priority,
-            order_by=self._sort_by,
-        )
+            tasks = self.task_model.get_all_tasks(
+                status=status,
+                priority=priority,
+                order_by=self._sort_by,
+            )
 
         # Clear existing cards
         for child in self.task_scroll.winfo_children():

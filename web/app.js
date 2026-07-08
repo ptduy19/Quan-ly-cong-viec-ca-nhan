@@ -304,6 +304,14 @@ function setupEventListeners() {
   document.getElementById("filter-status").addEventListener("change", renderTasks);
   document.getElementById("filter-priority").addEventListener("change", renderTasks);
   document.getElementById("filter-category").addEventListener("change", renderTasks);
+
+  // Dashboard stat cards & summary cards → task list
+  document.querySelectorAll(".clickable-card[data-filter]").forEach((card) => {
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".btn-edit, .icon-btn, button")) return;
+      navigateToTasksWithFilter(card.getAttribute("data-filter"));
+    });
+  });
   
   // Search View Event
   document.getElementById("search-input-field").addEventListener("input", performSearch);
@@ -366,6 +374,23 @@ function switchTab(tabId) {
   if (tabId === "calendar") renderCalendar();
   if (tabId === "settings") renderSettingsCategories();
   if (tabId === "notifications") renderNotifications();
+}
+
+// --- Navigate from dashboard to filtered task list ---
+function navigateToTasksWithFilter(statusFilter = "all") {
+  switchTab("tasks");
+
+  const searchEl = document.getElementById("filter-search");
+  const statusEl = document.getElementById("filter-status");
+  const priorityEl = document.getElementById("filter-priority");
+  const categoryEl = document.getElementById("filter-category");
+
+  if (searchEl) searchEl.value = "";
+  if (statusEl) statusEl.value = statusFilter;
+  if (priorityEl) priorityEl.value = "all";
+  if (categoryEl) categoryEl.value = "all";
+
+  renderTasks();
 }
 
 // --- Render Logic ---

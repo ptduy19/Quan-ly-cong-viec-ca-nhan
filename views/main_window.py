@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 from tkinter import messagebox
 
 from config.settings import (
-    APP_NAME, FONT_FAMILY, FONT_FAMILY, FONT_SIZE_SM, FONT_SIZE_MD, FONT_SIZE_LG,
+    APP_NAME, FONT_FAMILY, FONT_SIZE_SM, FONT_SIZE_MD, FONT_SIZE_LG,
     FONT_SIZE_XS, NAV_ITEMS, SIDEBAR_WIDTH, SIDEBAR_COLLAPSED_WIDTH,
     WINDOW_DEFAULT_GEOMETRY, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT,
     DARK, LIGHT
@@ -35,7 +35,7 @@ class MainWindow(ctk.CTk):
 
     def __init__(self):
         super().__init__()
-        
+
         IconManager.initialize()
 
         self.task_model = TaskModel()
@@ -90,7 +90,7 @@ class MainWindow(ctk.CTk):
         ctk.CTkLabel(
             logo_frame,
             text="",
-            image=IconManager.get_icon("\uf08d", color=t["accent"], size=24) # thumbtack
+            image=IconManager.get_icon("\uf08d", color=t["accent"], size=24),
         ).pack(side="left", padx=(4, 8))
 
         self.logo_text = ctk.CTkLabel(
@@ -154,10 +154,8 @@ class MainWindow(ctk.CTk):
 
     def _navigate(self, view_id: str):
         """Switch to a different view."""
-        # Update nav button styles
         t = self.current_theme
-        
-        # Get item color for the active tab
+
         active_color = t["accent"]
         for item in NAV_ITEMS:
             if item["id"] == view_id:
@@ -179,18 +177,15 @@ class MainWindow(ctk.CTk):
                     image=IconManager.get_icon(item['icon'], color=t["text_secondary"], size=18)
                 )
 
-        # Remove current view
         if self.current_view:
             self.current_view.pack_forget()
 
-        # Get or create view
         if view_id not in self.views:
             self.views[view_id] = self._create_view(view_id)
 
         self.current_view = self.views[view_id]
         self.current_view.pack(in_=self.content, fill="both", expand=True)
 
-        # Refresh data when navigating
         if hasattr(self.current_view, "refresh"):
             self.current_view.refresh()
 
@@ -202,6 +197,7 @@ class MainWindow(ctk.CTk):
             return DashboardView(
                 self.content, theme=t,
                 on_task_action=self._handle_task_action,
+                on_navigate_tasks=self._navigate_to_tasks,
             )
         elif view_id == "tasks":
             return TaskListView(
@@ -228,10 +224,16 @@ class MainWindow(ctk.CTk):
                 on_theme_change=self._on_theme_change,
             )
         else:
-            # Fallback empty frame
             frame = ctk.CTkFrame(self.content, fg_color="transparent")
             ctk.CTkLabel(frame, text=f"View: {view_id}").pack(pady=40)
             return frame
+
+    def _navigate_to_tasks(self, filter_type: str = "all"):
+        """Switch to task list view with a dashboard preset filter."""
+        self._navigate("tasks")
+        task_view = self.views.get("tasks")
+        if task_view and hasattr(task_view, "apply_dashboard_filter"):
+            task_view.apply_dashboard_filter(filter_type)
 
     def _handle_task_action(self, action: str, data):
         """Central handler for all task actions from any view."""
@@ -257,11 +259,9 @@ class MainWindow(ctk.CTk):
         """Open the task creation/editing modal."""
         def on_save(data):
             if task and "id" in data:
-                # Update existing task
                 task_id = data.pop("id")
                 self.task_model.update_task(task_id, **data)
             else:
-                # Create new task
                 self.task_model.create_task(**data)
             self._refresh_all_views()
 
@@ -272,7 +272,6 @@ class MainWindow(ctk.CTk):
             on_save=on_save,
         )
 
-        # Pre-fill date if adding from calendar
         if prefill_date and not task:
             dialog.entry_deadline_date.insert(0, prefill_date)
 
@@ -293,7 +292,6 @@ class MainWindow(ctk.CTk):
         self._theme_name = mode
         ctk.set_appearance_mode(mode)
 
-        # Recreate all views with new theme
         current_nav = None
         for nav_id, btn in self.nav_buttons.items():
             if self.views.get(nav_id) == self.current_view:
@@ -306,7 +304,6 @@ class MainWindow(ctk.CTk):
         self.views.clear()
         self.current_view = None
 
-        # Update sidebar colors
         t = self.current_theme
         self.configure(fg_color=t["bg_primary"])
         self.sidebar.configure(fg_color=t["bg_sidebar"])
@@ -322,7 +319,6 @@ class MainWindow(ctk.CTk):
 
         self.logo_text.configure(text_color=t["accent"])
 
-        # Navigate back to current page
         if current_nav:
             self._navigate(current_nav)
         else:
@@ -330,7 +326,6 @@ class MainWindow(ctk.CTk):
 
     def _toggle_sidebar(self):
         """Toggle sidebar between expanded and collapsed."""
-        t = self.current_theme
         if self._sidebar_expanded:
             self.sidebar.configure(width=SIDEBAR_COLLAPSED_WIDTH)
             self.logo_text.pack_forget()
@@ -376,7 +371,6 @@ class MainWindow(ctk.CTk):
         size = 64
         img = Image.new("RGB", (size, size), "#6c5ce7")
         draw = ImageDraw.Draw(img)
-        # Draw a checkmark
         draw.rectangle((size // 2, 0, size, size // 2), fill="#ffffff")
         draw.rectangle((0, size // 2, size // 2, size), fill="#ffffff")
         return img

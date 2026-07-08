@@ -12,9 +12,10 @@ class StatCard(ctk.CTkFrame):
     """A card widget for displaying a single statistic."""
 
     def __init__(self, master, icon: str, value: int, label: str,
-                 accent_color: str, theme: dict = None, **kwargs):
+                 accent_color: str, theme: dict = None, on_click=None, **kwargs):
         self.theme = theme or DARK
-        
+        self._on_click = on_click
+
         # In Option 4A: Card background is solid vibrant color
         super().__init__(
             master,
@@ -24,6 +25,9 @@ class StatCard(ctk.CTkFrame):
             **kwargs
         )
         self.grid_propagate(False)
+
+        if on_click:
+            self._bind_click(on_click)
 
         # ── Icon ─────────────────────────────────────────────────────────
         icon_label = ctk.CTkLabel(
@@ -54,6 +58,25 @@ class StatCard(ctk.CTkFrame):
             text_color="#ffffff", # Faint white
             anchor="nw",
         ).pack(fill="x", expand=True)
+
+    def _bind_click(self, on_click):
+        """Make the card clickable — navigate to filtered task list.
+        Recursively binds all child widgets so clicking anywhere on the card works.
+        """
+        def handler(_event=None):
+            on_click()
+
+        self._bind_recursive(self, handler)
+
+    def _bind_recursive(self, widget, handler):
+        """Recursively bind click and set cursor on widget and all descendants."""
+        try:
+            widget.configure(cursor="hand2")
+        except Exception:
+            pass
+        widget.bind("<Button-1>", handler)
+        for child in widget.winfo_children():
+            self._bind_recursive(child, handler)
 
     def update_value(self, new_value: int):
         self.value_label.configure(text=str(new_value))
