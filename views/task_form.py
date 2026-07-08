@@ -198,6 +198,46 @@ class TaskFormDialog(ctk.CTkToplevel):
         )
         self.entry_assignee.pack(fill="x")
 
+        # Recurrence + Progress row
+        rp_frame = ctk.CTkFrame(form, fg_color="transparent")
+        rp_frame.pack(fill="x", pady=(0, 10))
+        rp_frame.grid_columnconfigure((0, 1), weight=1)
+
+        # Recurrence
+        rl = ctk.CTkFrame(rp_frame, fg_color="transparent")
+        rl.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        self._add_label(rl, "Lặp lại (Tự động tạo mới khi xong)")
+        self.recurrence_options = {
+            "Không lặp lại": "none",
+            "Hàng ngày": "daily",
+            "Hàng tuần": "weekly",
+            "Hàng tháng": "monthly"
+        }
+        self.combo_recurrence = ctk.CTkComboBox(
+            rl, values=list(self.recurrence_options.keys()),
+            font=(FONT_FAMILY, FONT_SIZE_SM),
+            fg_color=t["bg_input"], border_color=t["border"],
+            text_color=t["text_primary"], button_color=t["accent"],
+            dropdown_fg_color=t["bg_card"],
+            dropdown_text_color=t["text_primary"],
+            height=36,
+        )
+        self.combo_recurrence.set("Không lặp lại")
+        self.combo_recurrence.pack(fill="x")
+
+        # Progress
+        rr = ctk.CTkFrame(rp_frame, fg_color="transparent")
+        rr.grid(row=0, column=1, sticky="ew", padx=(5, 0))
+        self._add_label(rr, "Tiến độ (%)")
+        self.entry_progress = ctk.CTkEntry(
+            rr, placeholder_text="0-100",
+            font=(FONT_FAMILY, FONT_SIZE_SM),
+            fg_color=t["bg_input"], border_color=t["border"],
+            text_color=t["text_primary"], height=36,
+        )
+        self.entry_progress.insert(0, "0")
+        self.entry_progress.pack(fill="x")
+
         # ── Buttons ──────────────────────────────────────────────────────
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(fill="x", padx=20, pady=(0, 20))
@@ -252,7 +292,7 @@ class TaskFormDialog(ctk.CTkToplevel):
             self.entry_start_date.insert(0, task["start_date"])
 
         self.entry_deadline_date.insert(0, task.get("deadline_date", ""))
-        self.entry_deadline_time.insert(0, task.get("deadline_time", "23:59"))
+        self.entry_deadline_time.insert(0, task.get("deadline_time", "16:00"))
 
         priority_map = {"high": "Cao", "medium": "Trung bình", "low": "Thấp"}
         self.combo_priority.set(priority_map.get(task.get("priority", "medium"), "Trung bình"))
@@ -262,6 +302,17 @@ class TaskFormDialog(ctk.CTkToplevel):
             self.combo_category.set(cat_name)
 
         self.entry_assignee.insert(0, task.get("assignee", ""))
+
+        rec_val = task.get("recurrence", "none")
+        rec_label = "Không lặp lại"
+        for label, key in self.recurrence_options.items():
+            if key == rec_val:
+                rec_label = label
+                break
+        self.combo_recurrence.set(rec_label)
+
+        self.entry_progress.delete(0, "end")
+        self.entry_progress.insert(0, str(task.get("progress", 0)))
 
     def _save(self):
         """Validate and return task data through on_save callback."""
@@ -282,7 +333,19 @@ class TaskFormDialog(ctk.CTkToplevel):
             self.entry_deadline_date.configure(border_color=self.theme["danger"])
             return
 
-        deadline_time = self.entry_deadline_time.get().strip() or "23:59"
+        deadline_time = self.entry_deadline_time.get().strip() or "16:00"
+
+        # Validate progress
+        progress_str = self.entry_progress.get().strip()
+        try:
+            progress = int(progress_str)
+            progress = max(0, min(100, progress))
+        except ValueError:
+            progress = 0
+            
+        # Validate recurrence
+        rec_label = self.combo_recurrence.get()
+        recurrence = self.recurrence_options.get(rec_label, "none")
 
         # Map priority label back to key
         label_to_key = {v["label"]: k for k, v in PRIORITY_CONFIG.items()}
@@ -305,6 +368,8 @@ class TaskFormDialog(ctk.CTkToplevel):
             "priority": priority,
             "category_id": category_id,
             "assignee": self.entry_assignee.get().strip(),
+            "progress": progress,
+            "recurrence": recurrence,
         }
 
         if self.task:

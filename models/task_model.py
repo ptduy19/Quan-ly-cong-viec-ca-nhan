@@ -16,10 +16,10 @@ class TaskModel:
 
     # ── Create ────────────────────────────────────────────────────────────────
 
-    def create_task(self, title: str, deadline_date: str, deadline_time: str = "23:59",
+    def create_task(self, title: str, deadline_date: str, deadline_time: str = "16:00",
                     description: str = "", start_date: str = None, priority: str = "medium",
                     category_id: int = None, assignee: str = "", user_id: int = 1,
-                    status: str = "pending", progress: int = 0) -> dict:
+                    status: str = "pending", progress: int = 0, recurrence: str = "none") -> dict:
         """Create a new task and return it as a dictionary."""
         if start_date is None:
             start_date = datetime.now().strftime("%Y-%m-%d")
@@ -27,10 +27,10 @@ class TaskModel:
         cursor = self.db.execute(
             """INSERT INTO tasks
                (title, description, start_date, deadline_date, deadline_time,
-                priority, status, progress, category_id, assignee, user_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                priority, status, progress, category_id, assignee, user_id, recurrence)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (title, description, start_date, deadline_date, deadline_time,
-             priority, status, progress, category_id, assignee, user_id)
+             priority, status, progress, category_id, assignee, user_id, recurrence)
         )
         return self.get_task(cursor.lastrowid)
 
@@ -165,7 +165,7 @@ class TaskModel:
         allowed_fields = {
             "title", "description", "start_date", "deadline_date", "deadline_time",
             "priority", "status", "progress", "category_id", "assignee",
-            "notified_1day", "notified_1hour", "notified_overdue"
+            "notified_1day", "notified_1hour", "notified_overdue", "recurrence"
         }
         updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
         if not updates:
@@ -180,17 +180,71 @@ class TaskModel:
         return self.get_task(task_id)
 
     def mark_completed(self, task_id: int) -> dict | None:
-        """Mark a task as completed with progress = 100."""
-        return self.update_task(task_id, status="completed", progress=100)
+        """Mark a task as completed with progress = 100 and auto-recur if set."""
+        return self.update_progress(task_id, 100)
 
     def update_progress(self, task_id: int, progress: int) -> dict | None:
-        """Update task progress. Auto-complete if progress >= 100."""
+        """Update task progress. Auto-complete and auto-recur if progress >= 100."""
         progress = max(0, min(100, progress))
         status = "completed" if progress >= 100 else None
         kwargs = {"progress": progress}
         if status:
             kwargs["status"] = status
-        return self.update_task(task_id, **kwargs)
+            
+        # Get old task to check recurrence before update
+        old_task = self.get_task(task_id)
+        
+        updated_task = self.update_task(task_id, **kwargs)
+        
+        # If just completed and has recurrence, spawn the next task
+        if status == "completed" and old_task and old_task.get("status") != "completed":
+            recurrence = old_task.get("recurrence", "none")
+            if recurrence != "none":
+                self._spawn_next_recurrence(old_task, recurrence)
+                
+        return updated_task
+
+    def _spawn_next_recurrence(self, task: dict, recurrence: str):
+        """Creates a new task for the next recurrence interval."""
+        try:
+            deadline = datetime.strptime(task["deadline_date"], "%Y-%m-%d")
+            
+            if recurrence == "daily":
+                next_deadline = deadline + timedelta(days=1)
+            elif recurrence == "weekly":
+                next_deadline = deadline + timedelta(days=7)
+            elif recurrence == "monthly":
+                # Advance by 1 month, approximately 30 days or handle month math
+                month = deadline.month
+                year = deadline.year
+                if month == 12:
+                    month = 1
+                    year += 1
+                else:
+                    month += 1
+                try:
+                    next_deadline = deadline.replace(year=year, month=month)
+                except ValueError: # e.g. Jan 31 -> Feb 31 (invalid), so use last day of month
+                    from calendar import monthrange
+                    last_day = monthrange(year, month)[1]
+                    next_deadline = deadline.replace(year=year, month=month, day=last_day)
+            else:
+                return
+
+            self.create_task(
+                title=task["title"],
+                description=task.get("description", ""),
+                start_date=datetime.now().strftime("%Y-%m-%d"),
+                deadline_date=next_deadline.strftime("%Y-%m-%d"),
+                deadline_time=task.get("deadline_time", "16:00"),
+                priority=task.get("priority", "medium"),
+                category_id=task.get("category_id"),
+                assignee=task.get("assignee", ""),
+                user_id=task.get("user_id", 1),
+                recurrence=recurrence
+            )
+        except Exception as e:
+            print(f"Error spawning recurrence: {e}")
 
     def move_task_to_date(self, task_id: int, new_date: str) -> dict | None:
         """Move a task to a new deadline date (for calendar drag)."""

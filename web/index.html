@@ -322,9 +322,9 @@
         </div>
         
         <div class="form-row">
-          <div class="form-group">
-            <label>Deadline (giờ)</label>
-            <input type="time" class="form-control" id="task-deadline-time" value="23:59">
+          <div class="form-group flex-1">
+            <label>Giờ hoàn thành</label>
+            <input type="time" class="form-control" id="task-deadline-time" value="16:00">
           </div>
           <div class="form-group">
             <label>Mức độ ưu tiên</label>
@@ -349,11 +349,22 @@
           </div>
         </div>
 
-        <div class="form-group" style="margin-top: 15px;" id="progress-group">
-          <label>Tiến độ hoàn thành: <span id="progress-val-text">0%</span></label>
-          <input type="range" class="form-control" id="task-progress" min="0" max="100" value="0" style="padding: 0; height: 8px;">
-        </div>
-        
+        <div style="display: flex; gap: 15px; margin-top: 15px;">
+          <div class="form-group flex-1" id="recurrence-group">
+            <label>Lặp lại công việc</label>
+            <select class="form-control" id="task-recurrence">
+              <option value="none">Không lặp lại</option>
+              <option value="daily">Hàng ngày</option>
+              <option value="weekly">Hàng tuần</option>
+              <option value="monthly">Hàng tháng</option>
+            </select>
+          </div>
+          
+          <div class="form-group flex-1" id="progress-group">
+            <label>Tiến độ (%)</label>
+            <input type="number" class="form-control" id="task-progress" min="0" max="100" value="0">
+          </div>
+        </div>  
         <div class="modal-footer">
           <button type="button" class="btn" id="btn-cancel-modal">Hủy</button>
           <button type="submit" class="btn btn-primary">Lưu công việc</button>

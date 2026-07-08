@@ -101,6 +101,7 @@ class DatabaseManager:
                 category_id      INTEGER REFERENCES categories(id) ON DELETE SET NULL,
                 assignee         TEXT DEFAULT '',
                 user_id          INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                recurrence       TEXT CHECK(recurrence IN ('none', 'daily', 'weekly', 'monthly')) DEFAULT 'none',
                 notified_1day    INTEGER DEFAULT 0,
                 notified_1hour   INTEGER DEFAULT 0,
                 notified_overdue INTEGER DEFAULT 0,
@@ -122,6 +123,13 @@ class DatabaseManager:
                 created_at  TEXT DEFAULT (datetime('now','localtime'))
             );
         """)
+
+        # Add 'recurrence' column if missing (auto-migration for existing DBs)
+        try:
+            self.conn.execute("ALTER TABLE tasks ADD COLUMN recurrence TEXT CHECK(recurrence IN ('none', 'daily', 'weekly', 'monthly')) DEFAULT 'none'")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass # Column already exists
 
         # Seed default categories if empty
         count = self.fetchone("SELECT COUNT(*) as cnt FROM categories")
@@ -186,8 +194,8 @@ class DatabaseManager:
                 self.execute(
                     """INSERT INTO tasks
                        (title, deadline_date, deadline_time, progress, assignee,
-                        status, category_id, user_id, priority)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        status, category_id, user_id, priority, recurrence)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         task.get("name", "Untitled"),
                         iso_date,
@@ -198,6 +206,7 @@ class DatabaseManager:
                         cat_id,
                         user_id,
                         "medium",
+                        "none",
                     )
                 )
             except Exception as e:
