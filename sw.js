@@ -1,4 +1,4 @@
-const CACHE_NAME = "duypt2-tasks-v4";
+const CACHE_NAME = "duypt2-tasks-v5";
 const ASSETS = [
   "./",
   "./index.html",

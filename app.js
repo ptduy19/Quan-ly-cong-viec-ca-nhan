@@ -1035,28 +1035,28 @@ function renderNotifications() {
     const card = document.createElement("div");
     card.className = `notification-card ${notif.urgency} ${notif.is_read ? "" : "unread"}`;
     
-    let iconHTML = \`<i class="fa-solid fa-circle-info" style="color: var(--info); font-size: 20px;"></i>\`;
-    if (notif.urgency === "warning") iconHTML = \`<i class="fa-solid fa-triangle-exclamation" style="color: var(--warning); font-size: 20px;"></i>\`;
-    if (notif.urgency === "danger") iconHTML = \`<i class="fa-solid fa-circle-exclamation" style="color: var(--danger); font-size: 20px;"></i>\`;
+    let iconHTML = `<i class="fa-solid fa-circle-info" style="color: var(--info); font-size: 20px;"></i>`;
+    if (notif.urgency === "warning") iconHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--warning); font-size: 20px;"></i>`;
+    if (notif.urgency === "danger") iconHTML = `<i class="fa-solid fa-circle-exclamation" style="color: var(--danger); font-size: 20px;"></i>`;
 
     const timeDate = new Date(notif.created_at);
-    const timeStr = \`\${String(timeDate.getHours()).padStart(2, '0')}:\${String(timeDate.getMinutes()).padStart(2, '0')} \${String(timeDate.getDate()).padStart(2, '0')}/\${String(timeDate.getMonth()+1).padStart(2, '0')}\`;
+    const timeStr = `${String(timeDate.getHours()).padStart(2, '0')}:${String(timeDate.getMinutes()).padStart(2, '0')} ${String(timeDate.getDate()).padStart(2, '0')}/${String(timeDate.getMonth()+1).padStart(2, '0')}`;
 
-    card.innerHTML = \`
+    card.innerHTML = `
       <div style="display: flex; gap: 15px; align-items: center; flex: 1;">
         <div style="width: 30px; display: flex; justify-content: center;">
-          \${iconHTML}
+          ${iconHTML}
         </div>
         <div class="notif-content" style="flex: 1;">
-          <h4>\${escapeHtml(notif.title)}</h4>
-          <p>\${escapeHtml(notif.message)}</p>
-          <span class="notif-time">\${timeStr}</span>
+          <h4>${escapeHtml(notif.title)}</h4>
+          <p>${escapeHtml(notif.message)}</p>
+          <span class="notif-time">${timeStr}</span>
         </div>
       </div>
       <div class="notif-actions">
-        \${!notif.is_read ? \`<button class="btn-mark-read" data-id="\${notif.id}"><i class="fa-solid fa-check"></i> Đã đọc</button>\` : \`<i class="fa-solid fa-check-double" style="color: var(--success); font-size: 14px;"></i>\`}
+        ${!notif.is_read ? `<button class="btn-mark-read" data-id="${notif.id}"><i class="fa-solid fa-check"></i> Đã đọc</button>` : `<i class="fa-solid fa-check-double" style="color: var(--success); font-size: 14px;"></i>`}
       </div>
-    \`;
+    `;
 
     if (!notif.is_read) {
       card.querySelector(".btn-mark-read").addEventListener("click", () => {
