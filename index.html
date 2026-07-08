@@ -84,7 +84,7 @@
       <!-- View 1: Dashboard -->
       <section id="dashboard-view" class="view-content active">
         <div class="dashboard-grid">
-          <div class="stat-card">
+          <div class="stat-card clickable-card" data-filter="all" title="Xem tất cả công việc">
             <div class="stat-icon" style="background-color: rgba(0, 204, 255, 0.1); color: #00ccff;">
               <i class="fa-solid fa-list-check"></i>
             </div>
@@ -93,7 +93,7 @@
               <span class="stat-label">Tổng công việc</span>
             </div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card clickable-card" data-filter="pending" title="Xem công việc đang làm">
             <div class="stat-icon" style="background-color: rgba(0, 240, 255, 0.1); color: #00f0ff;">
               <i class="fa-solid fa-spinner"></i>
             </div>
@@ -102,7 +102,7 @@
               <span class="stat-label">Đang làm</span>
             </div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card clickable-card" data-filter="completed" title="Xem công việc hoàn thành">
             <div class="stat-icon" style="background-color: rgba(57, 255, 20, 0.1); color: #39ff14;">
               <i class="fa-solid fa-circle-check"></i>
             </div>
@@ -111,7 +111,7 @@
               <span class="stat-label">Hoàn thành</span>
             </div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card clickable-card" data-filter="overdue" title="Xem công việc quá hạn">
             <div class="stat-icon" style="background-color: rgba(255, 0, 85, 0.1); color: #ff0055;">
               <i class="fa-solid fa-circle-exclamation"></i>
             </div>
@@ -123,8 +123,11 @@
         </div>
 
         <div class="summary-container">
-          <div class="summary-card">
-            <h3>Tiến độ hoàn thành</h3>
+          <div class="summary-card clickable-card" data-filter="completed" title="Xem công việc hoàn thành">
+            <div class="summary-card-header">
+              <h3>Tiến độ hoàn thành</h3>
+              <span class="view-all-link">Xem danh sách →</span>
+            </div>
             <div class="progress-ring-container">
               <svg width="150" height="150">
                 <circle cx="75" cy="75" r="60" stroke="#2a364d" stroke-width="12" fill="transparent"/>
@@ -139,8 +142,11 @@
             </div>
           </div>
 
-          <div class="summary-card">
-            <h3>Công việc khẩn cấp / Quá hạn</h3>
+          <div class="summary-card clickable-card" data-filter="overdue" title="Xem công việc khẩn cấp / quá hạn">
+            <div class="summary-card-header">
+              <h3>Công việc khẩn cấp / Quá hạn</h3>
+              <span class="view-all-link">Xem danh sách →</span>
+            </div>
             <div class="tasks-container" id="urgent-tasks-list">
               <!-- Dynamically populated -->
             </div>
