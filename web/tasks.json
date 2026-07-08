@@ -1,20 +1,5 @@
 [
   {
-    "id": "task-1781520007733",
-    "title": "Mạng X, báo cáo lại",
-    "description": "Mô phỏng báo cáo powerpoint",
-    "start_date": "2026-06-15",
-    "deadline_date": "2026-06-16",
-    "deadline_time": "10:00",
-    "priority": "medium",
-    "category_id": "cat-2",
-    "assignee": "Trunglhm",
-    "progress": 100,
-    "updated_at": "2026-07-08T15:58:31.785Z",
-    "created_at": "2026-06-15T10:40:07.733Z",
-    "notified_overdue": true
-  },
-  {
     "id": "task-1783526466787",
     "title": "Học Thi nhân sự thị trường",
     "description": "",
