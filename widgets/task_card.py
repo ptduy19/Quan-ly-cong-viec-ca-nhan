@@ -54,7 +54,9 @@ class TaskCard(ctk.CTkFrame):
         # Hover effects
         self.bind("<Enter>", self._on_enter)
         self.bind("<Leave>", self._on_leave)
-        self.bind("<Button-1>", self._on_card_click)
+        
+        # Bind click event to the main frame and all children
+        self._bind_click_event(self)
 
     def _build_card(self):
         """Build the card layout."""
@@ -64,7 +66,6 @@ class TaskCard(ctk.CTkFrame):
         # ── Top row: Priority dot + Title + Status badge ─────────────────
         top_frame = ctk.CTkFrame(self, fg_color="transparent")
         top_frame.pack(fill="x", padx=14, pady=(12, 4))
-        top_frame.bind("<Button-1>", self._on_card_click)
 
         # Priority dot
         priority_cfg = PRIORITY_CONFIG.get(task.get("priority", "medium"), PRIORITY_CONFIG["medium"])
@@ -85,7 +86,6 @@ class TaskCard(ctk.CTkFrame):
             anchor="w",
         )
         title_label.pack(side="left", fill="x", expand=True)
-        title_label.bind("<Button-1>", self._on_card_click)
 
         # Status badge
         status = task.get("status", "pending")
@@ -324,3 +324,14 @@ class TaskCard(ctk.CTkFrame):
     def _on_card_click(self, event):
         if self.on_click:
             self.on_click(self.task)
+
+    def _bind_click_event(self, widget):
+        """Recursively bind click event to all child widgets except buttons."""
+        if not isinstance(widget, ctk.CTkButton):
+            try:
+                widget.bind("<Button-1>", self._on_card_click)
+            except Exception:
+                pass
+            
+            for child in widget.winfo_children():
+                self._bind_click_event(child)
