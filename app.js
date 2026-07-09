@@ -558,6 +558,12 @@ function createTaskCardElement(task) {
   card.querySelector(".btn-delete").addEventListener("click", () => {
     deleteTask(task.id);
   });
+  
+  // Attach card click to edit
+  card.addEventListener("click", (e) => {
+    if (e.target.closest(".task-checkbox, .btn-edit, .btn-delete")) return;
+    openTaskModal(task);
+  });
 
   return card;
 }
