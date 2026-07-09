@@ -24,11 +24,16 @@ let gitConfig = {
 };
 let gitSha = null; // Store SHA of tasks.json for overwrite verification
 let isGitConnected = false;
+let gitSyncTimeout = null; // For API debouncing
 
 // --- Notifications State ---
 let notifications = [];
 
 // --- Date Utils ---
+function getTodayStr() {
+  return new Date().toISOString().split("T")[0];
+}
+
 function isTaskOverdue(task) {
   if (task.progress >= 100) return false;
   if (!task.deadline_date) return false;
@@ -249,6 +254,20 @@ async function saveTasksToGitHub() {
   }
 }
 
+function scheduleGitSync() {
+  saveLocalTasks(); // Always save locally first
+  if (!isGitConnected || !gitConfig.token) return;
+  
+  if (gitSyncTimeout) {
+    clearTimeout(gitSyncTimeout);
+  }
+  
+  updateGitStatus(true, "Đang chờ đồng bộ...");
+  gitSyncTimeout = setTimeout(() => {
+    saveTasksToGitHub();
+  }, 2000); // 2 second debounce
+}
+
 function updateGitStatus(connected, message) {
   const statusEl = document.getElementById("git-status");
   if (statusEl) {
@@ -427,8 +446,6 @@ function updateCalculations() {
   let pending = 0;
   let overdue = 0;
 
-  const todayStr = new Date().toISOString().split("T")[0];
-
   tasks.forEach((t) => {
     if (t.progress >= 100) {
       completed++;
@@ -469,8 +486,6 @@ function renderTasks() {
   const priorityVal = document.getElementById("filter-priority").value;
   const categoryVal = document.getElementById("filter-category").value;
 
-  const todayStr = new Date().toISOString().split("T")[0];
-
   const filteredTasks = tasks.filter((task) => {
     // Search Filter
     const matchSearch =
@@ -503,20 +518,52 @@ function renderTasks() {
     return;
   }
 
+  const fragment = document.createDocumentFragment();
   filteredTasks.forEach((task) => {
-    container.appendChild(createTaskCardElement(task));
+    fragment.appendChild(createTaskCardElement(task));
   });
+  container.appendChild(fragment);
 }
 
-function createTaskCardElement(task) {
+function createTaskCardElement(task, isCompact = false) {
   const card = document.createElement("div");
   card.className = `task-card priority-${task.priority}`;
   if (task.progress >= 100) card.classList.add("completed");
 
-  const catObj = categories.find((c) => c.id === task.category_id) || { name: "Cá nhân", color: "#8b8fa3" };
   const isCompleted = task.progress >= 100;
 
-  // Format Date display
+  if (isCompact) {
+    card.style.padding = "10px 15px";
+    const isOverdue = isTaskOverdue(task);
+    const dateColor = isOverdue ? "var(--danger)" : "var(--text-secondary)";
+    
+    card.innerHTML = `
+      <div class="task-left">
+        <div class="task-details">
+          <div class="task-title" style="font-size: 14px;">${escapeHtml(task.title)}</div>
+          <div class="task-meta" style="font-size: 10px;">
+            <span class="badge badge-priority-${task.priority}">${priorityLabel(task.priority)}</span>
+            <span class="meta-item" style="color: ${dateColor}; font-weight: bold;">
+              <i class="fa-solid fa-circle-exclamation"></i> Hạn: ${formatDate(task.deadline_date)}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="task-right">
+        <button class="icon-btn btn-edit" data-id="${task.id}" style="width: 26px; height: 26px;"><i class="fa-solid fa-pen" style="font-size:11px;"></i></button>
+      </div>
+    `;
+    
+    card.querySelector(".btn-edit").addEventListener("click", () => openTaskModal(task));
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".btn-edit")) return;
+      openTaskModal(task);
+    });
+    
+    return card;
+  }
+
+  const catObj = categories.find((c) => c.id === task.category_id) || { name: "Cá nhân", color: "#8b8fa3" };
   const startDisplay = task.start_date ? formatDate(task.start_date) : "";
   const deadlineDisplay = `${formatDate(task.deadline_date)} lúc ${task.deadline_time}`;
 
@@ -544,22 +591,13 @@ function createTaskCardElement(task) {
     </div>
   `;
 
-  // Attach Checkbox click
   card.querySelector(".task-checkbox").addEventListener("change", (e) => {
     toggleTaskComplete(task.id, e.target.checked);
   });
 
-  // Attach Edit click
-  card.querySelector(".btn-edit").addEventListener("click", () => {
-    openTaskModal(task);
-  });
-
-  // Attach Delete click
-  card.querySelector(".btn-delete").addEventListener("click", () => {
-    deleteTask(task.id);
-  });
+  card.querySelector(".btn-edit").addEventListener("click", () => openTaskModal(task));
+  card.querySelector(".btn-delete").addEventListener("click", () => deleteTask(task.id));
   
-  // Attach card click to edit
   card.addEventListener("click", (e) => {
     if (e.target.closest(".task-checkbox, .btn-edit, .btn-delete")) return;
     openTaskModal(task);
@@ -591,48 +629,34 @@ function renderDashboardUrgent() {
     return;
   }
 
+  const fragment = document.createDocumentFragment();
   urgentTasks.forEach((task) => {
-    const card = document.createElement("div");
-    card.className = `task-card priority-${task.priority}`;
-    card.style.padding = "10px 15px";
-
-    const isOverdue = isTaskOverdue(task);
-    const dateColor = isOverdue ? "var(--danger)" : "var(--text-secondary)";
-
-    card.innerHTML = `
-      <div class="task-left">
-        <div class="task-details">
-          <div class="task-title" style="font-size: 14px;">${escapeHtml(task.title)}</div>
-          <div class="task-meta" style="font-size: 10px;">
-            <span class="badge badge-priority-${task.priority}">${priorityLabel(task.priority)}</span>
-            <span class="meta-item" style="color: ${dateColor}; font-weight: bold;">
-              <i class="fa-solid fa-circle-exclamation"></i> Hạn: ${formatDate(task.deadline_date)}
-            </span>
-          </div>
-        </div>
-      </div>
-      <div class="task-right">
-        <button class="icon-btn btn-edit" data-id="${task.id}" style="width: 26px; height: 26px;"><i class="fa-solid fa-pen" style="font-size:11px;"></i></button>
-      </div>
-    `;
-
-    card.querySelector(".btn-edit").addEventListener("click", () => {
-      openTaskModal(task);
-    });
-
-    container.appendChild(card);
+    fragment.appendChild(createTaskCardElement(task, true));
   });
+  container.appendChild(fragment);
 }
 
 // --- Search Implementation ---
+function getMatchedTasks(query) {
+  if (!query) return [];
+  const q = query.toLowerCase().trim();
+  return tasks.filter((t) => {
+    return (
+      t.title.toLowerCase().includes(q) ||
+      (t.description || "").toLowerCase().includes(q) ||
+      (t.assignee || "").toLowerCase().includes(q)
+    );
+  });
+}
+
 function performSearch() {
-  const query = document.getElementById("search-input-field").value.toLowerCase().trim();
+  const query = document.getElementById("search-input-field").value;
   const container = document.getElementById("search-results-list");
   if (!container) return;
 
   container.innerHTML = "";
 
-  if (!query) {
+  if (!query.trim()) {
     container.innerHTML = `
       <div style="text-align: center; color: var(--text-muted); padding: 40px;">
         Nhập từ khóa tìm kiếm để hiển thị kết quả.
@@ -641,13 +665,7 @@ function performSearch() {
     return;
   }
 
-  const matches = tasks.filter((t) => {
-    return (
-      t.title.toLowerCase().includes(query) ||
-      (t.description || "").toLowerCase().includes(query) ||
-      (t.assignee || "").toLowerCase().includes(query)
-    );
-  });
+  const matches = getMatchedTasks(query);
 
   if (matches.length === 0) {
     container.innerHTML = `
@@ -658,9 +676,11 @@ function performSearch() {
     return;
   }
 
+  const fragment = document.createDocumentFragment();
   matches.forEach((task) => {
-    container.appendChild(createTaskCardElement(task));
+    fragment.appendChild(createTaskCardElement(task));
   });
+  container.appendChild(fragment);
 }
 
 // --- Calendar Renderer ---
@@ -682,12 +702,13 @@ function renderCalendar() {
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
   // Prev Month Days
+  const fragment = document.createDocumentFragment();
   const prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
   for (let i = firstDay - 1; i >= 0; i--) {
     const cell = document.createElement("div");
     cell.className = "calendar-cell inactive";
     cell.innerHTML = `<span class="calendar-day-num">${prevMonthDays - i}</span>`;
-    daysGrid.appendChild(cell);
+    fragment.appendChild(cell);
   }
 
   // Current Month Days
@@ -730,8 +751,10 @@ function renderCalendar() {
       openTaskModal(null, dayStr);
     });
 
-    daysGrid.appendChild(cell);
+    fragment.appendChild(cell);
   }
+  
+  daysGrid.appendChild(fragment);
 }
 
 function changeMonth(dir) {
@@ -799,11 +822,37 @@ function addNewCategoryUI() {
 }
 
 function deleteCategory(id) {
+  if (categories.length <= 1) {
+    alert("Bạn không thể xóa nhóm công việc cuối cùng!");
+    return;
+  }
+  
+  if (!confirm("Bạn có chắc chắn muốn xóa nhóm này? Các công việc thuộc nhóm này sẽ được chuyển về nhóm mặc định.")) {
+    return;
+  }
+
+  // Find a fallback category (the first one that isn't being deleted)
+  const fallbackCat = categories.find((c) => c.id !== id);
+
   categories = categories.filter((c) => c.id !== id);
   localStorage.setItem("duypt2_categories", JSON.stringify(categories));
+  
+  // Reassign tasks
+  let changed = false;
+  tasks.forEach((t) => {
+    if (t.category_id === id) {
+      t.category_id = fallbackCat.id;
+      changed = true;
+    }
+  });
+
   populateCategoryDropdowns();
   renderSettingsCategories();
   renderTasks();
+  
+  if (changed) {
+    scheduleGitSync();
+  }
 }
 
 // --- Task Modal Operations ---
@@ -816,7 +865,7 @@ function openTaskModal(task = null, prefillDate = null) {
   currentEditingTaskId = null;
 
   // Default values
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = getTodayStr();
   document.getElementById("task-start-date").value = todayStr;
   document.getElementById("task-deadline-date").value = prefillDate || todayStr;
   document.getElementById("task-deadline-time").value = "16:00";
@@ -896,7 +945,7 @@ function handleFormSubmit(e) {
       if (taskData.progress >= 100 && oldTask.progress < 100 && taskData.recurrence !== "none") {
         spawnNextRecurrence(tasks[idx]);
       }
-      saveTasksToGitHub();
+      scheduleGitSync();
     }
     closeModal();
   } else {
@@ -907,7 +956,7 @@ function handleFormSubmit(e) {
       ...taskData
     };
     tasks.push(newTask);
-    saveTasksToGitHub();
+    scheduleGitSync();
     closeModal();
   }
 }
@@ -922,7 +971,7 @@ function toggleTaskComplete(id, completed) {
     if (progressVal === 100 && oldProgress < 100 && tasks[idx].recurrence !== "none") {
       spawnNextRecurrence(tasks[idx]);
     }
-    saveTasksToGitHub();
+    scheduleGitSync();
   }
 }
 
@@ -960,7 +1009,7 @@ function deleteTask(id) {
   if (!confirm("Bạn có chắc chắn muốn xóa công việc này?")) return;
 
   tasks = tasks.filter((t) => t.id !== id);
-  saveTasksToGitHub();
+  scheduleGitSync();
 }
 
 // --- Utilities ---
@@ -1013,7 +1062,7 @@ function checkDeadlines() {
   });
 
   if (changed) {
-    saveTasksToGitHub(); // Update task flags
+    scheduleGitSync(); // Update task flags
   }
 }
 
