@@ -1158,3 +1158,190 @@ function renderNotifications() {
     container.appendChild(card);
   });
 }
+
+// --- Excel Import/Export ---
+document.getElementById("btn-export-excel").addEventListener("click", exportToExcel);
+document.getElementById("btn-download-template").addEventListener("click", downloadExcelTemplate);
+document.getElementById("btn-import-excel").addEventListener("click", () => {
+  document.getElementById("excel-file-input").click();
+});
+document.getElementById("excel-file-input").addEventListener("change", importFromExcel);
+
+function exportToExcel() {
+  if (tasks.length === 0) {
+    alert("Không có dữ liệu để xuất!");
+    return;
+  }
+  
+  const exportData = tasks.map(t => {
+    const cat = categories.find(c => c.id === t.category_id);
+    return {
+      "ID": t.id,
+      "Tiêu đề": t.title,
+      "Mô tả": t.description || "",
+      "Mức độ (cao/trung_binh/thap)": t.priority,
+      "Nhóm": cat ? cat.name : "Cá nhân",
+      "Ngày bắt đầu": t.start_date || "",
+      "Hạn chót": t.deadline_date || "",
+      "Giờ hạn chót": t.deadline_time || "23:59",
+      "Người giao": t.assignee || "",
+      "Tiến độ (%)": t.progress || 0,
+      "Lặp lại (none/daily/weekly/monthly)": t.recurrence || "none"
+    };
+  });
+  
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Danh_sach_cong_viec");
+  XLSX.writeFile(wb, `Danh_sach_cong_viec_${getTodayStr()}.xlsx`);
+}
+
+function downloadExcelTemplate() {
+  const templateData = [{
+    "Tiêu đề": "Họp dự án đầu tuần",
+    "Mô tả": "Chuẩn bị báo cáo tiến độ",
+    "Mức độ (cao/trung_binh/thap)": "cao",
+    "Nhóm": "Công việc",
+    "Ngày bắt đầu": getTodayStr(),
+    "Hạn chót": getTodayStr(),
+    "Giờ hạn chót": "09:00",
+    "Người giao": "Sếp",
+    "Tiến độ (%)": 0,
+    "Lặp lại (none/daily/weekly/monthly)": "none"
+  }];
+  
+  const ws = XLSX.utils.json_to_sheet(templateData);
+  
+  // Define column widths for better UX
+  ws['!cols'] = [
+    { wch: 30 }, // Tiêu đề
+    { wch: 40 }, // Mô tả
+    { wch: 30 }, // Mức độ
+    { wch: 15 }, // Nhóm
+    { wch: 15 }, // Ngày bắt đầu
+    { wch: 15 }, // Hạn chót
+    { wch: 15 }, // Giờ
+    { wch: 20 }, // Người giao
+    { wch: 15 }, // Tiến độ
+    { wch: 35 }  // Lặp lại
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Mau_Import");
+  XLSX.writeFile(wb, "Mau_Import_Cong_Viec.xlsx");
+}
+
+function importFromExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const json = XLSX.utils.sheet_to_json(worksheet);
+
+      if (json.length === 0) {
+        alert("File Excel trống!");
+        return;
+      }
+
+      let importCount = 0;
+      let changed = false;
+
+      json.forEach(row => {
+        if (!row["Tiêu đề"]) return; // Bỏ qua nếu không có tiêu đề
+        
+        // Match category by name, default to "cat-1" (Cá nhân)
+        let catId = "cat-1";
+        const catName = row["Nhóm"];
+        if (catName) {
+          const matchedCat = categories.find(c => c.name.toLowerCase() === String(catName).toLowerCase());
+          if (matchedCat) catId = matchedCat.id;
+        }
+
+        const rawPriority = row["Mức độ (cao/trung_binh/thap)"] ? String(row["Mức độ (cao/trung_binh/thap)"]).toLowerCase() : "trung_binh";
+        const priority = ["cao", "trung_binh", "thap"].includes(rawPriority) ? rawPriority : "trung_binh";
+
+        const rawRecurrence = row["Lặp lại (none/daily/weekly/monthly)"] ? String(row["Lặp lại (none/daily/weekly/monthly)"]).toLowerCase() : "none";
+        const recurrence = ["none", "daily", "weekly", "monthly"].includes(rawRecurrence) ? rawRecurrence : "none";
+
+        // Generate date if Excel gave serial numbers
+        let startDate = row["Ngày bắt đầu"];
+        if (typeof startDate === 'number') {
+          const jsDate = new Date(Math.round((startDate - 25569)*86400*1000));
+          startDate = jsDate.toISOString().split("T")[0];
+        } else if (!startDate) {
+          startDate = getTodayStr();
+        }
+
+        let deadlineDate = row["Hạn chót"];
+        if (typeof deadlineDate === 'number') {
+          const jsDate = new Date(Math.round((deadlineDate - 25569)*86400*1000));
+          deadlineDate = jsDate.toISOString().split("T")[0];
+        } else if (!deadlineDate) {
+          deadlineDate = getTodayStr();
+        }
+
+        let deadlineTime = row["Giờ hạn chót"];
+        if (typeof deadlineTime === 'number') {
+           // Excel time is fraction of a day
+           const totalSeconds = Math.floor(deadlineTime * 86400);
+           const hours = Math.floor(totalSeconds / 3600);
+           const minutes = Math.floor((totalSeconds % 3600) / 60);
+           deadlineTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        } else if (!deadlineTime) {
+           deadlineTime = "23:59";
+        }
+
+        const newTask = {
+          id: row["ID"] || `task-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          title: String(row["Tiêu đề"]),
+          description: row["Mô tả"] ? String(row["Mô tả"]) : "",
+          priority: priority,
+          category_id: catId,
+          start_date: startDate,
+          deadline_date: deadlineDate,
+          deadline_time: deadlineTime,
+          assignee: row["Người giao"] ? String(row["Người giao"]) : "",
+          progress: parseInt(row["Tiến độ (%)"]) || 0,
+          recurrence: recurrence
+        };
+        
+        // Avoid duplicates if ID exists
+        const existingIdx = tasks.findIndex(t => t.id === newTask.id);
+        if (existingIdx >= 0) {
+          tasks[existingIdx] = newTask;
+        } else {
+          tasks.push(newTask);
+        }
+        importCount++;
+        changed = true;
+      });
+
+      if (changed) {
+        scheduleGitSync();
+        renderTasks();
+        updateCalculations();
+        
+        // Cập nhật lại các màn hình khác nếu cần
+        renderCalendar();
+        renderDashboardUrgent();
+        
+        alert(`Đã import thành công ${importCount} công việc!`);
+      } else {
+        alert("Không tìm thấy công việc hợp lệ nào để Import.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại định dạng hoặc cấu trúc file.");
+    } finally {
+      // Reset input file
+      event.target.value = "";
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
