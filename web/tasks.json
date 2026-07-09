@@ -60,15 +60,15 @@
   {
     "id": "task-1783526836068",
     "title": "ZTE Swap hàng ngày",
-    "description": "",
+    "description": "BLU0210,BLU0105-12,BLU0297,BLU0450,BLU0402,BLU0540,BLU0184,BLU0296,BLU0154,BLU0520,BLU0163,BLU0163-41",
     "start_date": "2026-07-09",
     "deadline_date": "2026-07-31",
     "deadline_time": "17:00",
     "priority": "high",
-    "category_id": "cat-1",
+    "category_id": "cat-2",
     "assignee": "Duypt2",
     "progress": 0,
-    "updated_at": "2026-07-08T16:32:59.926Z",
+    "updated_at": "2026-07-09T02:15:47.900Z",
     "created_at": "2026-07-08T16:07:16.068Z",
     "recurrence": "daily"
   },
