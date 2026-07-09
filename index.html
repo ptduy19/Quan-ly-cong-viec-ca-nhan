@@ -17,6 +17,7 @@
 
   <!-- FontAwesome for icons & Google Fonts (loaded if needed, but we style in Times New Roman) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -74,6 +75,18 @@
       <header>
         <h1 id="view-title">Dashboard</h1>
         <div class="header-actions">
+          <button class="btn" id="btn-export-excel" style="background: var(--surface-light); color: var(--primary);">
+            <i class="fa-solid fa-file-export"></i>
+            <span>Export Excel</span>
+          </button>
+          <button class="btn" id="btn-download-template" style="background: var(--surface-light); color: var(--secondary);">
+            <i class="fa-solid fa-file-excel"></i>
+            <span>Tải File Mẫu</span>
+          </button>
+          <button class="btn" id="btn-import-excel" style="background: var(--surface-light); color: #28a745;">
+            <i class="fa-solid fa-file-import"></i>
+            <span>Import Excel</span>
+          </button>
           <button class="btn btn-primary" id="btn-add-task-header">
             <i class="fa-solid fa-plus"></i>
             <span>Thêm công việc</span>
@@ -376,6 +389,9 @@
     </div>
   </div>
   
+  <!-- Hidden File Input for Excel Import -->
+  <input type="file" id="excel-file-input" accept=".xlsx, .xls" hidden>
+
   <!-- Core Application Scripts -->
   <script src="app.js"></script>
 </body>
