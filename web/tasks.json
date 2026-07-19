@@ -149,5 +149,20 @@
     "recurrence": "none",
     "updated_at": "2026-07-15T17:32:29.213Z",
     "created_at": "2026-07-15T17:32:29.213Z"
+  },
+  {
+    "id": "task-1784450290509",
+    "title": "Trạm vương luồng 1G",
+    "description": "Blu0272, Blu0078",
+    "start_date": "2026-07-19",
+    "deadline_date": "2026-07-19",
+    "deadline_time": "16:00",
+    "priority": "medium",
+    "category_id": "cat-2",
+    "assignee": "",
+    "progress": 0,
+    "recurrence": "none",
+    "updated_at": "2026-07-19T08:38:10.509Z",
+    "created_at": "2026-07-19T08:38:10.509Z"
   }
 ]
